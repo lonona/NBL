@@ -7,14 +7,14 @@ NBLE: Natural Background Level estimator
 
 1. Produces the morphorlogical structure of the geochemical data using the Kernel Density Estimation (KDE) approach as presented below;
 
-.. image:: https://raw.githubusercontent.com/cosmo-ethz/hide/master/docs/simdata.png
-   :alt: Simulated time-ordered-data with **HIDE**.
+.. image:: https://raw.githubusercontent.com/lonona/NBL/master/gmm/image/kde.png
+   :alt: 
    :align: center
 
 2. Estimates the NBL by using the Gaussian Mixture Model to decompose the geochemical data into components as displayed below; 
 
-.. image:: https://raw.githubusercontent.com/cosmo-ethz/hide/master/docs/simdata.png
-   :alt: Simulated time-ordered-data with **HIDE**.
+.. image:: https://raw.githubusercontent.com/lonona/NBL/master/gmm/image/gmm.png
+   :alt: 
    :align: center
 
 
