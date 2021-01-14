@@ -18,4 +18,4 @@ NBLE: Natural Background Level estimator
    :align: center
 
 
-To run the <<model_util>> script you may install **Anaconda** from the `Official link <https://www.anaconda.com/products/individual>`_. Click on this `template <https://nbviewer.jupyter.org/urls/dl.dropbox.com/s/od7hlgp3101o4wa/nble.ipynb>`_ to obtain the plots above. 
+To run the <<model_util>> script you may install **Anaconda** from the `Official link <https://www.anaconda.com/products/individual>`_. Click on this `template <https://nbviewer.jupyter.org/urls/dl.dropbox.com/s/3u5igqyx602c1cd/nble.ipynb>`_ to obtain the plots above. 
