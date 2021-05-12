@@ -91,9 +91,9 @@ def compare_mc_sampling(mu_N, std_N, limits, sampSize = 1000,
                   density=True, 
                   bins=40,
                   color='b',
-                  edgecolor='black', 
+                  edgecolor='black',
                   linewidth=1.2,
-                  label=r'$\rm NO_{3}^{-}-N \, distr.$')
+                  label=r'$\rm HQ \, distr.$')
 
     for i in range(3):
         
@@ -109,8 +109,14 @@ def compare_mc_sampling(mu_N, std_N, limits, sampSize = 1000,
             sample_no3 = get_truncated_normal(mean=mu_N[i], sd=std_N[i], low=limits[i][0], upp=limits[i][1]).rvs(sampSize)
 
         sample_bw = get_truncated_normal(mean=bw_mu, sd=bw_std, low=limits[i][0], upp=limits[i][1]).rvs(sampSize)
+
         sample_Ir = get_truncated_normal(mean=Ir_mu, sd=Ir_std, low=limits[i][0], upp=limits[i][1]).rvs(sampSize)
-        sample_HQ = 1.6*sample_no3 * sample_Ir/sample_bw
+        # if i == 0:
+        # 	print(np.max(sample_Ir/sample_bw))
+        sample_HQ = sample_no3 * sample_Ir/(1.6*sample_bw)
+
+        # if i == 0:
+        # 	print(sample_bw)
         # stat, p = normaltest(sample_HQ)
     #     print('Size = %d; Statistics=%.3f, p=%.3f' % (sizes[i], stat, p))
     
@@ -130,9 +136,11 @@ def compare_mc_sampling(mu_N, std_N, limits, sampSize = 1000,
 
             # add a 'best fit' line
             xmin, xmax = plt.xlim()
+            # print(sample_HQ.max())
             norm_x = np.linspace(xmin, xmax, len(bins))
             norm_y = norm.pdf(norm_x, mu, sigma)
             l = plt.plot(norm_x, norm_y, 'r--', linewidth=2, label='Normal fit')
+            # print(n.max())
 
             # confident interval
             ci = norm(*norm.fit(sample_HQ)).interval(c)
@@ -144,7 +152,7 @@ def compare_mc_sampling(mu_N, std_N, limits, sampSize = 1000,
             sbins = bins[np.where(np.logical_and(bins >= ci[0], bins <= ci[-1]))]
             count = len(sbins[np.where(sbins > 1 )])
 
-            plt.text(sbins.max(), norm_y.max()-0.1, r'risk=${:.2f}$'.format(count/100))
+            plt.text(sbins.max()/2, norm_y.max(), r'risk=${:.2f}$'.format(count/100))
             # plt.xlim(limits[i][0], limits[i][1])
             plt.xlim(0)
             plt.legend(loc=0, framealpha=0.5)
