@@ -22,6 +22,9 @@ from sklearn.svm import SVR
 # import xgboost as xgb
 # import lightgbm as lgb
 
+from keras.models import Sequential
+from keras.layers import Dense, Dropout
+
 #Validation function
 # from sklearn.preprocessing import StandardScaler
 n_folds = 5
@@ -130,3 +133,60 @@ class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
 			np.column_stack([model.predict(X) for model in base_models]).mean(axis=1)
 			for base_models in self.base_models_ ])
 		return self.meta_model_.predict(meta_features)
+
+	def get_model(trainX, trainy, iterr=0):
+    
+    if iterr == 0:
+        # define model 1
+        model = Sequential()
+        model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
+        model.add(Dense(1, activation='softplus'))
+        model.compile(loss='mse', optimizer='nadam', 
+                      metrics=['mae','mse','mape','CosineSimilarity','msle'])
+        
+    elif iterr == 1:
+        # define model 2
+        model = Sequential()
+        model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
+        model.add(Dense(25, activation='relu'))
+        model.add(Dense(1, activation='softplus'))
+        model.compile(loss='mse', optimizer='nadam',
+                      metrics=['mae','mse','mape','CosineSimilarity','msle'])
+        
+    
+    elif iterr == 2:
+        # define model 3
+        model = Sequential()
+        model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
+        model.add(Dense(25, activation='relu'))
+        model.add(Dense(15, activation = 'relu'))
+        model.add(Dense(1, activation='softplus'))
+        model.compile(loss='mse', optimizer='nadam')
+#                       metrics=['mae','mse','mape','CosineSimilarity','msle'])
+        
+    elif iterr == 3:
+        # define model 4
+        model = Sequential()
+        model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
+        model.add(Dense(25, activation='relu'))
+        model.add(Dropout(0.1))
+        model.add(Dense(10,activation = 'relu'))
+        model.add(Dense(1, activation='softplus'))
+        model.compile(loss='mse',
+                      optimizer='nadam')
+#                       metrics=['mae','mse','mape','CosineSimilarity','msle'])
+
+    else:
+        # define model 5
+        model = Sequential()
+        model.add(Dense(30, input_dim=trainX.shape[-1], activation='relu'))
+        model.add(Dropout(0.5))
+        model.add(Dense(20, activation='relu'))
+        model.add(Dropout(0.5))
+        model.add(Dense(10,activation = 'relu'))
+        model.add(Dense(1, activation='softplus'))
+        model.compile(loss='mse',
+                      optimizer='rmsprop')
+#     model.fit(trainX, trainy, epochs=30, batch_size=1, verbose=0)
+    
+    return model
