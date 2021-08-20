@@ -18,6 +18,7 @@ from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin, clone
 from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVR
 # import xgboost as xgb
 # import lightgbm as lgb
@@ -33,17 +34,17 @@ n_jobs = -1
 
 # get a list of models to evaluate
 def get_basemodels():
-    model = dict()
-    model['LR'] = LinearRegression()
-    model['lasso'] = make_pipeline(RobustScaler(), Lasso(alpha=0.0005, random_state= random_state))
-    model['elastic_net'] = make_pipeline(RobustScaler(), ElasticNet(alpha=0.0005, l1_ratio= .9, random_state= random_state))
-    model['kernel_ridge'] = KernelRidge(alpha=0.6, kernel='polynomial', degree=2, coef0=2.5)
-    model['knn'] = KNeighborsRegressor()
-    model['cart'] = DecisionTreeRegressor()
-    model['svm'] = SVR()
-    # model['stack'] = get_stacking()
-    
-    return model
+	model = dict()
+	model['LR'] = LinearRegression()
+	model['lasso'] = make_pipeline(RobustScaler(), Lasso(alpha=0.0005, random_state= random_state))
+	model['elastic_net'] = make_pipeline(RobustScaler(), ElasticNet(alpha=0.0005, l1_ratio= .9, random_state= random_state))
+	model['kernel_ridge'] = KernelRidge(alpha=0.6, kernel='polynomial', degree=2, coef0=2.5)
+	model['knn'] = KNeighborsRegressor()
+	model['cart'] = DecisionTreeRegressor()
+	model['svm'] = SVR()
+	# model['stack'] = get_stacking()
+	
+	return model
 
 
 def data_preprocess(X,y):
@@ -64,11 +65,11 @@ def data_preprocess(X,y):
 
 
 def base_rmse(model,xtrain,ytrain,xtest,ytest):
-    
-    model.fit(xtrain, ytrain)
-    ypred = model.predict(xtest)
-    
-    return mean_squared_error(ytest, ypred, squared= False)
+	
+	model.fit(xtrain, ytrain)
+	ypred = model.predict(xtest)
+	
+	return mean_squared_error(ytest, ypred, squared= False)
 
 def rmsle_cv(model, X, y):
 	kf = KFold(n_folds, shuffle=True, random_state=42).get_n_splits(X)
@@ -99,20 +100,23 @@ class AveragingModels(BaseEstimator, RegressorMixin, TransformerMixin):
 
 
 class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
-	def __init__(self, base_models, meta_model, n_folds=5):
+	def __init__(self, base_models, meta_model, param_grid={}, n_folds=5):
 		self.base_models = base_models
 		self.meta_model = meta_model
 		self.n_folds = n_folds
+		self.param_grid = param_grid
    
 	# We again fit the data on clones of the original models
 	def fit(self, X, y):
 		self.base_models_ = [list() for x in self.base_models]
 		self.meta_model_ = clone(self.meta_model)
-		kfold = KFold(n_splits=self.n_folds, shuffle=True, random_state=156)
+		kfold = KFold(n_splits=self.n_folds, 
+			shuffle=True, random_state=156)
 		
 		# Train cloned base models then create out-of-fold predictions
 		# that are needed to train the cloned meta-model
-		out_of_fold_predictions = np.zeros((X.shape[0], len(self.base_models)))
+		out_of_fold_predictions = np.zeros((X.shape[0], 
+											len(self.base_models)))
 		for i, model in enumerate(self.base_models):
 			for train_index, holdout_index in kfold.split(X, y):
 				instance = clone(model)
@@ -121,8 +125,15 @@ class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
 				y_pred = instance.predict(X[holdout_index])
 				out_of_fold_predictions[holdout_index, i] = y_pred
 				
+		# Fine tune meta_model hyperparameters
+		self.meta_model_ = GridSearchCV(estimator=self.meta_model_, 
+										param_grid=self.param_grid,
+										cv=self.n_folds,
+										scoring='neg_mean_squared_error', 
+										verbose=1, n_jobs=-1)
 		# Now train the cloned  meta-model using the out-of-fold predictions as new feature
 		self.meta_model_.fit(out_of_fold_predictions, y)
+		print("best parameters are: ", self.meta_model_.best_params_)
 		
 		return self
    
@@ -134,59 +145,60 @@ class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
 			for base_models in self.base_models_ ])
 		return self.meta_model_.predict(meta_features)
 
-	def get_model(trainX, trainy, iterr=0):
-    
-    if iterr == 0:
-        # define model 1
-        model = Sequential()
-        model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
-        model.add(Dense(1, activation='softplus'))
-        model.compile(loss='mse', optimizer='nadam', 
-                      metrics=['mae','mse','mape','CosineSimilarity','msle'])
-        
-    elif iterr == 1:
-        # define model 2
-        model = Sequential()
-        model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
-        model.add(Dense(25, activation='relu'))
-        model.add(Dense(1, activation='softplus'))
-        model.compile(loss='mse', optimizer='nadam',
-                      metrics=['mae','mse','mape','CosineSimilarity','msle'])
-        
-    
-    elif iterr == 2:
-        # define model 3
-        model = Sequential()
-        model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
-        model.add(Dense(25, activation='relu'))
-        model.add(Dense(15, activation = 'relu'))
-        model.add(Dense(1, activation='softplus'))
-        model.compile(loss='mse', optimizer='nadam')
-#                       metrics=['mae','mse','mape','CosineSimilarity','msle'])
-        
-    elif iterr == 3:
-        # define model 4
-        model = Sequential()
-        model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
-        model.add(Dense(25, activation='relu'))
-        model.add(Dropout(0.1))
-        model.add(Dense(10,activation = 'relu'))
-        model.add(Dense(1, activation='softplus'))
-        model.compile(loss='mse',
-                      optimizer='nadam')
-#                       metrics=['mae','mse','mape','CosineSimilarity','msle'])
+def get_model(trainX, trainy, iterr=0):
 
-    else:
-        # define model 5
-        model = Sequential()
-        model.add(Dense(30, input_dim=trainX.shape[-1], activation='relu'))
-        model.add(Dropout(0.5))
-        model.add(Dense(20, activation='relu'))
-        model.add(Dropout(0.5))
-        model.add(Dense(10,activation = 'relu'))
-        model.add(Dense(1, activation='softplus'))
-        model.compile(loss='mse',
-                      optimizer='rmsprop')
-#     model.fit(trainX, trainy, epochs=30, batch_size=1, verbose=0)
-    
-    return model
+	if iterr == 0:
+
+		# define model 1
+		model = Sequential()
+		model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
+		model.add(Dense(1, activation='softplus'))
+		model.compile(loss='mse', optimizer='nadam', 
+					  metrics=['mae','mse','mape','CosineSimilarity','msle'])
+		
+	elif iterr == 1:
+		# define model 2
+		model = Sequential()
+		model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
+		model.add(Dense(25, activation='relu'))
+		model.add(Dense(1, activation='softplus'))
+		model.compile(loss='mse', optimizer='nadam',
+					  metrics=['mae','mse','mape','CosineSimilarity','msle'])
+		
+	
+	elif iterr == 2:
+		# define model 3
+		model = Sequential()
+		model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
+		model.add(Dense(25, activation='relu'))
+		model.add(Dense(15, activation = 'relu'))
+		model.add(Dense(1, activation='softplus'))
+		model.compile(loss='mse', optimizer='nadam')
+		# metrics=['mae','mse','mape','CosineSimilarity','msle'])
+		
+	elif iterr == 3:
+		# define model 4
+		model = Sequential()
+		model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
+		model.add(Dense(25, activation='relu'))
+		model.add(Dropout(0.1))
+		model.add(Dense(10,activation = 'relu'))
+		model.add(Dense(1, activation='softplus'))
+		model.compile(loss='mse',
+					  optimizer='nadam')
+		# metrics=['mae','mse','mape','CosineSimilarity','msle'])
+
+	else:
+		# define model 5
+		model = Sequential()
+		model.add(Dense(30, input_dim=trainX.shape[-1], activation='relu'))
+		model.add(Dropout(0.5))
+		model.add(Dense(20, activation='relu'))
+		model.add(Dropout(0.5))
+		model.add(Dense(10,activation = 'relu'))
+		model.add(Dense(1, activation='softplus'))
+		model.compile(loss='mse',
+					  optimizer='rmsprop')
+		# model.fit(trainX, trainy, epochs=30, batch_size=1, verbose=0)
+	
+	return model
