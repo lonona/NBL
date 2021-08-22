@@ -100,6 +100,7 @@ class AveragingModels(BaseEstimator, RegressorMixin, TransformerMixin):
 
 
 class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
+	
 	def __init__(self, base_models, meta_model, param_grid={}, n_folds=5):
 		self.base_models = base_models
 		self.meta_model = meta_model
@@ -110,18 +111,22 @@ class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
 	def fit(self, X, y):
 		self.base_models_ = [list() for x in self.base_models]
 		self.meta_model_ = clone(self.meta_model)
-		kfold = KFold(n_splits=self.n_folds, 
-			shuffle=True, random_state=156)
+
+		kfold = KFold(n_splits=self.n_folds, shuffle=True, random_state=random_state)
 		
 		# Train cloned base models then create out-of-fold predictions
 		# that are needed to train the cloned meta-model
-		out_of_fold_predictions = np.zeros((X.shape[0], 
-											len(self.base_models)))
+		out_of_fold_predictions = np.zeros((X.shape[0], len(self.base_models)))
+		
 		for i, model in enumerate(self.base_models):
 			for train_index, holdout_index in kfold.split(X, y):
-				instance = clone(model)
+				try:
+					instance = clone(model)
+				except:
+					instance = model
 				self.base_models_[i].append(instance)
-				instance.fit(X[train_index], y[train_index])
+				
+				instance.fit(X[train_index], y[train_index])				
 				y_pred = instance.predict(X[holdout_index])
 				out_of_fold_predictions[holdout_index, i] = y_pred
 				
@@ -131,6 +136,7 @@ class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
 										cv=self.n_folds,
 										scoring='neg_mean_squared_error', 
 										verbose=1, n_jobs=-1)
+		
 		# Now train the cloned  meta-model using the out-of-fold predictions as new feature
 		self.meta_model_.fit(out_of_fold_predictions, y)
 		print("best parameters are: ", self.meta_model_.best_params_)
@@ -145,7 +151,7 @@ class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
 			for base_models in self.base_models_ ])
 		return self.meta_model_.predict(meta_features)
 
-def get_model(trainX, trainy, iterr=0):
+def get_model(trainX, iterr=0):
 
 	if iterr == 0:
 
@@ -153,8 +159,8 @@ def get_model(trainX, trainy, iterr=0):
 		model = Sequential()
 		model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
 		model.add(Dense(1, activation='softplus'))
-		model.compile(loss='mse', optimizer='nadam', 
-					  metrics=['mae','mse','mape','CosineSimilarity','msle'])
+		model.compile(loss='mse', optimizer='nadam') 
+					  # metrics=['mae','mse','mape','CosineSimilarity','msle'])
 		
 	elif iterr == 1:
 		# define model 2
@@ -162,8 +168,8 @@ def get_model(trainX, trainy, iterr=0):
 		model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
 		model.add(Dense(25, activation='relu'))
 		model.add(Dense(1, activation='softplus'))
-		model.compile(loss='mse', optimizer='nadam',
-					  metrics=['mae','mse','mape','CosineSimilarity','msle'])
+		model.compile(loss='mse', optimizer='nadam')
+					  # metrics=['mae','mse','mape','CosineSimilarity','msle'])
 		
 	
 	elif iterr == 2:
@@ -184,8 +190,7 @@ def get_model(trainX, trainy, iterr=0):
 		model.add(Dropout(0.1))
 		model.add(Dense(10,activation = 'relu'))
 		model.add(Dense(1, activation='softplus'))
-		model.compile(loss='mse',
-					  optimizer='nadam')
+		model.compile(loss='mse', optimizer='nadam')
 		# metrics=['mae','mse','mape','CosineSimilarity','msle'])
 
 	else:
@@ -197,8 +202,64 @@ def get_model(trainX, trainy, iterr=0):
 		model.add(Dropout(0.5))
 		model.add(Dense(10,activation = 'relu'))
 		model.add(Dense(1, activation='softplus'))
-		model.compile(loss='mse',
-					  optimizer='rmsprop')
-		# model.fit(trainX, trainy, epochs=30, batch_size=1, verbose=0)
+		model.compile(loss='mse', optimizer='rmsprop')
 	
 	return model
+
+
+def stacked_dataset(members, inputX):
+	"""create stacked model input dataset as outputs from the ensemble"""
+
+	predict_base_m = []
+	stackX = None
+	for model in members:
+		
+		# make prediction
+		yhat = model.predict(inputX, verbose=0)
+		predict_base_m.append(yhat)
+		
+		# stack predictions into [rows, members, probabilities]
+		if stackX is None:
+			stackX = yhat
+		else:
+			stackX = np.dstack((stackX, yhat))
+	
+	# flatten predictions to [rows, members x probabilities]
+	stackX = stackX.reshape((stackX.shape[0], stackX.shape[1]*stackX.shape[2]))
+	
+	return stackX, np.array(predict_base_m)
+
+
+def fit_stacked_model(members, inputX, inputy, meta_learner, param_grid = {}):
+
+	"""fit a model based on the outputs from the ensemble members"""
+
+	# create dataset using ensemble
+	stackedX = stacked_dataset(members, inputX)[0]
+
+	# fit standalone model
+	meta_reg = GridSearchCV(estimator=meta_learner,
+							 param_grid = param_grid,
+							 cv=n_folds,
+							 scoring='neg_mean_squared_error', 
+							 verbose=1, 
+							 n_jobs=n_jobs)
+
+	meta_reg.fit(stackedX, inputy)
+
+	#print the best parameters from all possible combinations
+	print("best parameters are: ", meta_reg.best_params_)    
+	
+	return meta_reg
+
+
+def stacked_prediction(members, model_learner, inputX):
+	"""make a prediction with the stacked model"""
+
+	# create dataset using ensemble
+	stackedX, per_modl = stacked_dataset(members, inputX)
+	
+	# make a prediction
+	yhat = model_learner.predict(stackedX)
+	
+	return yhat, per_modl[...,0]	
