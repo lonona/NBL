@@ -79,7 +79,12 @@ def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
 
 
 
-def compare_mc_sampling(mu_N, std_N, limits, sampSize = 1000, 
+def compare_mc_sampling(mu_N, 
+                        std_N, 
+                        limits, 
+                        risk='more',
+                        risk_level=1,
+                        sampSize = 1000, 
 						weights=[1,1], bw_mu = 4.85, bw_std = 0.93, Ir_mu = 1.034, Ir_std = 0.83,
 						fsize=[20,16], DPI=80, ci_color='orange'):
     
@@ -150,7 +155,13 @@ def compare_mc_sampling(mu_N, std_N, limits, sampSize = 1000,
                               alpha=0.5,
                               label=r'{:.2f} \% CI'.format(c*100) )  # Mark between 0 and the highest bar in the histogram
             sbins = bins[np.where(np.logical_and(bins >= ci[0], bins <= ci[-1]))]
-            count = len(sbins[np.where(sbins > 1 )])
+            if risk == 'less':
+                count = len(sbins[np.where(sbins < risk_level )])
+            elif risk == 'more':
+                count = len(sbins[np.where(sbins > risk_level )])
+            elif risk == 'btn':
+                count = len(sbins[np.where(np.logical_and(sbins > risk_level[0], sbins < risk_level[-1] )])
+
 
             plt.text(sbins.max()/2, norm_y.max(), r'risk=${:.2f}$'.format(count/100))
             # plt.xlim(limits[i][0], limits[i][1])

@@ -20,11 +20,15 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVR
+from sklearn import neural_network
+from sklearn.gaussian_process import GaussianProcessRegressor
+# from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+
 # import xgboost as xgb
 # import lightgbm as lgb
 
-from keras.models import Sequential
-from keras.layers import Dense, Dropout
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
 
 #Validation function
 # from sklearn.preprocessing import StandardScaler
@@ -42,7 +46,11 @@ def get_basemodels():
 	model['knn'] = KNeighborsRegressor()
 	model['cart'] = DecisionTreeRegressor()
 	model['svm'] = SVR()
+	model['mlp'] = neural_network.MLPRegressor()
+	model['gp'] = GaussianProcessRegressor()
+
 	# model['stack'] = get_stacking()
+	# kernel=kernel, n_restarts_optimizer=9
 	
 	return model
 
@@ -50,7 +58,12 @@ def get_basemodels():
 def data_preprocess(X,y):
 	'''Split data into train and test form'''
 
-	X_train, X_test, y_train, y_test = train_test_split(X, y.values.ravel(), test_size=0.3, random_state=0)
+	try:
+		X_train, X_test, y_train, y_test = train_test_split(X, y.values.ravel(), test_size=0.3, random_state=0)
+
+	except:
+		X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)
+	
 	
 	
 	scaler = StandardScaler(copy=True, with_mean=True, with_std=True)
@@ -151,14 +164,14 @@ class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
 			for base_models in self.base_models_ ])
 		return self.meta_model_.predict(meta_features)
 
-def get_model(trainX, iterr=0):
+def get_model(trainX, iterr=0, output=1):
 
 	if iterr == 0:
 
 		# define model 1
 		model = Sequential()
 		model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
-		model.add(Dense(1, activation='softplus'))
+		model.add(Dense(output, activation='softplus'))
 		model.compile(loss='mse', optimizer='nadam') 
 					  # metrics=['mae','mse','mape','CosineSimilarity','msle'])
 		
@@ -167,7 +180,7 @@ def get_model(trainX, iterr=0):
 		model = Sequential()
 		model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
 		model.add(Dense(25, activation='relu'))
-		model.add(Dense(1, activation='softplus'))
+		model.add(Dense(output, activation='softplus'))
 		model.compile(loss='mse', optimizer='nadam')
 					  # metrics=['mae','mse','mape','CosineSimilarity','msle'])
 		
@@ -178,7 +191,7 @@ def get_model(trainX, iterr=0):
 		model.add(Dense(50, input_dim=trainX.shape[-1], activation='relu'))
 		model.add(Dense(25, activation='relu'))
 		model.add(Dense(15, activation = 'relu'))
-		model.add(Dense(1, activation='softplus'))
+		model.add(Dense(output, activation='softplus'))
 		model.compile(loss='mse', optimizer='nadam')
 		# metrics=['mae','mse','mape','CosineSimilarity','msle'])
 		
@@ -189,7 +202,7 @@ def get_model(trainX, iterr=0):
 		model.add(Dense(25, activation='relu'))
 		model.add(Dropout(0.1))
 		model.add(Dense(10,activation = 'relu'))
-		model.add(Dense(1, activation='softplus'))
+		model.add(Dense(output, activation='softplus'))
 		model.compile(loss='mse', optimizer='nadam')
 		# metrics=['mae','mse','mape','CosineSimilarity','msle'])
 
@@ -201,7 +214,7 @@ def get_model(trainX, iterr=0):
 		model.add(Dense(20, activation='relu'))
 		model.add(Dropout(0.5))
 		model.add(Dense(10,activation = 'relu'))
-		model.add(Dense(1, activation='softplus'))
+		model.add(Dense(output, activation='softplus'))
 		model.compile(loss='mse', optimizer='rmsprop')
 	
 	return model
