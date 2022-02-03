@@ -19,7 +19,7 @@ def bootstrap_outlier_removal(df, colname, n = 300, niter=9, p_rnge=[0.05, 0.95]
 		outlier removal and returns the lower and upper
 		percentiles.
 	"""
-	data = ndata['{}'.format(colname)].values
+	data = df['{}'.format(colname)].values
 	boot = []
 	mean = []
 	percentile_rnge = []
