@@ -47,10 +47,10 @@ def bootstrap_outlier_removal(df, colname, n = 300, niter=9, p_rnge=[0.05, 0.95]
 
 	plt.figure(figsize=(10,5), dpi =100)
 	plt.boxplot(boot, vert=True)
-	plt.plot(range(1,K +1),mean, 'bo')
+	plt.plot(range(1, K + 1), mean, 'bo')
 	plt.ylim(-5, None)
-	plt.xlabel(r"n random sampling")
-	plt.ylabel(r'$\rm NO_{3}\,$(mg/l)')
+	plt.xlabel(r"iteration steps")
+	plt.ylabel(r'$\rm NO_{3}-N\,$(mg/L)')
 
 
 	return np.array(percentile_rnge)
