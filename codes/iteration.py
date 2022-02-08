@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 #%matplotlib inline
 import seaborn as sns
 sns.set(context="notebook", 
-	palette="Spectral", 
-	style = 'darkgrid', 
-	font_scale = 1.5, 
-	color_codes=True)
+		palette="Spectral", 
+		style = 'darkgrid', 
+		font_scale = 1.5, 
+		color_codes=True)
 from sklearn.utils import resample
 from scipy.stats import skew, norm, kurtosis, mstats
 
@@ -23,12 +23,14 @@ def bootstrap_outlier_removal(df, colname, n = 300, niter=9, p_rnge=[0.05, 0.95]
 	boot = []
 	mean = []
 	percentile_rnge = []
+	std = []
 
 	K = niter
 	for k in range(K):
 	    
 
 	    a = resample(data, replace=True, n_samples=n, random_state=128)
+	    std.append(np.std(a))
 	    boot.append(a)
 	    mean.append(a.mean())
 
@@ -53,4 +55,4 @@ def bootstrap_outlier_removal(df, colname, n = 300, niter=9, p_rnge=[0.05, 0.95]
 	plt.ylabel(r'$\rm NO_{3}-N\,$(mg/L)')
 
 
-	return np.array(percentile_rnge)
+	return np.array(percentile_rnge), np.array(std)
