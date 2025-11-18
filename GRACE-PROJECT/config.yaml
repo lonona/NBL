@@ -1,0 +1,28 @@
+data_dir: "data/raw"
+output_dir: "outputs"
+freqs: ["5.0", "6.0"]              # strings matching your filenames
+beam_ids: [1,2,3,4,5,6]            # or use names from files
+th_name: "th"
+ph_name: "ph"
+jones_names: ["Jqh","Jqv","Jph","Jpv"]
+normalize: true
+eps_phase_mask: 1e-3
+interpolation_downsamples: [2,4,8] # grid factors to try
+mlp:
+  batch_size: 4096
+  lr: 1e-3
+  epochs: 200
+  hidden: [128,256,128]
+gp:
+  max_train_points: 2000  # per-case GP training for baseline
+splits:
+  optionA:
+    train: {"freq": "5.0", "beams": [1,2,3,4,5,6]}
+    test: {"freq": "6.0", "beams": [1,2,3,4,5,6]}
+  optionB:
+    train: {"freqs": ["5.0","6.0"], "beams": [1,2,3,4]}
+    test: {"freqs": ["5.0","6.0"], "beams": [5,6]}
+  optionC:
+    # customize as described in doc
+    train: {"cases": [["5.0",[1,2,3]], ["6.0",[4,5]]]}
+    test:  {"cases": [["5.0",[6]], ["6.0",[6]]]}
